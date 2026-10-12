@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ child.name }} · spellbot{% endblock %}
+{% block body_class %}practice{% endblock %}
+{% block body %}
+<div class="practice-shell">
+  <header class="topbar">
+    <p class="who">{{ child.name }}</p>
+    <p id="timer" class="timer">0:00</p>
+    <button type="button" id="finish" class="text-button">Finish</button>
+  </header>
+  <div id="finish-panel" class="finish-panel" hidden>
+    <p>Finish now? Your score will be saved.</p>
+    <div class="actions">
+      <button type="button" id="finish-yes">Finish</button>
+      <button type="button" id="finish-no" class="secondary">Keep going</button>
+    </div>
+  </div>
+  <main id="main" class="practice-main">
+    <p id="feedback" class="feedback" aria-live="polite"></p>
+    <p id="sentence" class="sentence"></p>
+    <p id="answer-word" class="answer-word" hidden></p>
+    <div id="hint"></div>
+    <form id="answer-form">
+      <label for="spelling">Your spelling</label>
+      <input id="spelling" name="spelling" type="text" maxlength="80" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="done">
+      <div class="actions">
+        <button type="button" id="hear" class="secondary">Hear the word</button>
+        <button type="submit" id="check">Check</button>
+      </div>
+    </form>
+    <button type="button" id="next" class="secondary wide" hidden>Next</button>
+  </main>
+</div>
+<script id="boot" type="application/json">{{ boot_json | safe }}</script>
+{% endblock %}
+{% block scripts %}
+<script src="/static/practice.js" defer></script>
+{% endblock %}

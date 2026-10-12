@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Word lists · spellbot{% endblock %}
+{% block body_class %}admin{% endblock %}
+{% block body %}
+{% include "admin_nav.html" %}
+<main id="main" class="wrap">
+  <h1>Word lists</h1>
+  {% if notice %}
+    <p class="notice" role="status">{{ notice }}</p>
+  {% endif %}
+  {% if error %}
+    <p class="errors" role="alert">{{ error }}</p>
+  {% endif %}
+  <section class="card">
+    <h2>New list</h2>
+    <form method="post" action="/admin/lists">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label for="list-name">Name</label>
+      <input id="list-name" name="name" value="{{ draft_name }}" required maxlength="60" placeholder="Homophones">
+      <button type="submit">Create list</button>
+    </form>
+  </section>
+  {% if not lists %}
+    <p class="lead">Create a list, paste in the words, then assign it to a child.</p>
+  {% endif %}
+  {% for item in lists %}
+    <section class="card">
+      <h2><a href="/admin/lists/{{ item.id }}">{{ item.name }}</a></h2>
+      <p>{{ item.word_count }} word{% if item.word_count != 1 %}s{% endif %}
+        {% if item.children %} · {{ item.children | join(", ") }}{% else %} · not assigned{% endif %}
+      </p>
+    </section>
+  {% endfor %}
+</main>
+{% endblock %}

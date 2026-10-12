@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ child.name }} · spellbot{% endblock %}
+{% block body %}
+<main id="main" class="wrap">
+  <p class="brand"><span class="mark" aria-hidden="true">sp</span> spellbot</p>
+  <h1>{{ child.name }}</h1>
+  <p class="lead">{{ child.session_minutes }} minute{% if child.session_minutes != 1 %}s{% endif %}</p>
+  {% if error %}
+    <p class="errors" role="alert">{{ error }}</p>
+  {% endif %}
+  {% if running %}
+    <a class="button" href="/play/{{ running.token }}">Continue</a>
+  {% endif %}
+  {% if word_count > 0 %}
+    <form method="post" action="/c/{{ child.id }}/start">
+      <button type="submit" class="{% if running %}secondary{% endif %}">
+        {% if running %}Start a new sitting{% else %}Start{% endif %}
+      </button>
+    </form>
+  {% elif not running %}
+    <p>No words yet. Ask a grown-up to add a list.</p>
+  {% endif %}
+  {% if latest_percent is not none %}
+    <p class="last-score">Last time: {{ latest_percent }}%</p>
+  {% endif %}
+  <p class="footer-link"><a href="/">Not {{ child.name }}?</a></p>
+</main>
+{% endblock %}

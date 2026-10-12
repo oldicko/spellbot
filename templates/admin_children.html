@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Children · spellbot{% endblock %}
+{% block body_class %}admin{% endblock %}
+{% block body %}
+{% include "admin_nav.html" %}
+<main id="main" class="wrap">
+  <h1>Children</h1>
+  {% if notice %}
+    <p class="notice" role="status">{{ notice }}</p>
+  {% endif %}
+  {% if error %}
+    <p class="errors" role="alert">{{ error }}</p>
+  {% endif %}
+  {% if voice_ready %}
+    <p><a href="/admin/voice">Play the voice</a></p>
+  {% else %}
+    <p class="note">The voice file is not on this server yet. Spelling still works.</p>
+  {% endif %}
+
+  <section class="card">
+    <h2>Add a child</h2>
+    <form method="post" action="/admin/children">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label for="new-name">Name</label>
+      <input id="new-name" name="name" value="{{ draft_name }}" required maxlength="40">
+      <label for="new-minutes">Minutes in one sitting</label>
+      <input id="new-minutes" name="minutes" type="number" min="1" max="60" value="{{ draft_minutes }}" required>
+      <button type="submit">Add child</button>
+    </form>
+  </section>
+
+  {% if not cards %}
+    <p class="lead">Add Julian and Grace, then make a word list for them.</p>
+  {% endif %}
+  {% for card in cards %}
+    <section class="card">
+      <h2><a href="/admin/children/{{ card.child.id }}/stats">{{ card.child.name }}</a></h2>
+      {% if card.report.pooled_percent is none %}
+        <p>No sittings yet.</p>
+      {% else %}
+        <p>Average score: {{ card.report.pooled_percent }}% from {{ card.report.pooled_correct }} of {{ card.report.pooled_attempts }} first tries.</p>
+        <p>
+          {{ card.trend_label }}
+          {% if card.report.scores|length >= 2 %}
+            · Recent sittings {{ card.report.recent_percent }}%
+          {% endif %}
+        </p>
+      {% endif %}
+      <form method="post" action="/admin/children/{{ card.child.id }}">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <label for="name-{{ card.child.id }}">Name</label>
+        <input id="name-{{ card.child.id }}" name="name" value="{{ card.child.name }}" required maxlength="40">
+        <label for="minutes-{{ card.child.id }}">Minutes</label>
+        <input id="minutes-{{ card.child.id }}" name="minutes" type="number" min="1" max="60" value="{{ card.child.session_minutes }}" required>
+        <button type="submit">Save</button>
+      </form>
+      <p class="row-links">
+        <a href="/admin/children/{{ card.child.id }}/stats">Word statistics</a>
+        <a href="/admin/children/{{ card.child.id }}/delete">Delete</a>
+      </p>
+    </section>
+  {% endfor %}
+</main>
+{% endblock %}

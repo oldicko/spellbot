@@ -1,0 +1,19 @@
+services:
+  spellbot:
+    build: .
+    image: spellbot:latest
+    container_name: spellbot
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      DATA_DIR: /data
+      VOICE_PATH: /app/voices/en_GB-cori-medium.onnx
+      TZ: Europe/London
+    volumes:
+      - spellbot-data:/data
+
+volumes:
+  spellbot-data:

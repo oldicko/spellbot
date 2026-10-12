@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Delete · spellbot{% endblock %}
+{% block body_class %}admin{% endblock %}
+{% block body %}
+{% include "admin_nav.html" %}
+<main id="main" class="wrap narrow">
+  {% if kind == "child" %}
+    <h1>Delete {{ target.name }}?</h1>
+    <p>This removes their sittings and scores.</p>
+    <form method="post" action="/admin/children/{{ target.id }}/delete">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="danger" type="submit">Delete {{ target.name }}</button>
+    </form>
+  {% else %}
+    <h1>Delete {{ target.name }}?</h1>
+    <p>The words in this list will be removed.</p>
+    <form method="post" action="/admin/lists/{{ target.id }}/delete">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="danger" type="submit">Delete {{ target.name }}</button>
+    </form>
+  {% endif %}
+  <p class="footer-link"><a href="/admin">Keep it</a></p>
+</main>
+{% endblock %}

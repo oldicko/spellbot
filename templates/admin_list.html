@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}{{ word_list.name }} · spellbot{% endblock %}
+{% block body_class %}admin{% endblock %}
+{% block body %}
+{% include "admin_nav.html" %}
+<main id="main" class="wrap">
+  <h1>{{ word_list.name }}</h1>
+  {% if notice %}
+    <p class="notice" role="status">{{ notice }}</p>
+  {% endif %}
+  {% if errors %}
+    <div class="errors" role="alert">
+      {% for item in errors %}
+        <p>{{ item }}</p>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <section class="card">
+    <h2>List</h2>
+    <form method="post" action="/admin/lists/{{ word_list.id }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label for="list-name">Name</label>
+      <input id="list-name" name="name" value="{{ word_list.name }}" required maxlength="60">
+      <fieldset>
+        <legend>Assigned to</legend>
+        {% if children %}
+          {% for child in children %}
+            <label class="check">
+              <input type="checkbox" name="child" value="{{ child.id }}" {% if child.id in assigned %}checked{% endif %}>
+              {{ child.name }}
+            </label>
+          {% endfor %}
+        {% else %}
+          <p>Add a child before assigning this list.</p>
+        {% endif %}
+      </fieldset>
+      <button type="submit">Save</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Add words</h2>
+    <p>One word per line: <code>word | example sentence</code>. The sentence is shown with the word hidden.</p>
+    <form method="post" action="/admin/lists/{{ word_list.id }}/words">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label for="paste">Words</label>
+      <textarea id="paste" name="paste" placeholder="they're | They're going to the park.&#10;their | Their coats are on the pegs.">{{ draft }}</textarea>
+      <button type="submit">Add these words</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Words</h2>
+    {% if not words %}
+      <p>No words yet.</p>
+    {% endif %}
+    {% for word in words %}
+      <article class="word-row">
+        <h3>{{ word.word }}</h3>
+        <form method="post" action="/admin/words/{{ word.id }}">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <label for="sentence-{{ word.id }}">Sentence</label>
+          <input id="sentence-{{ word.id }}" name="sentence" value="{{ word.sentence }}" maxlength="240" required>
+          <button type="submit">Save sentence</button>
+        </form>
+        <form method="post" action="/admin/words/{{ word.id }}/delete" data-confirm="Delete {{ word.word }}?">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button class="danger" type="submit">Delete word</button>
+        </form>
+      </article>
+    {% endfor %}
+    <p class="row-links"><a href="/admin/lists/{{ word_list.id }}/delete">Delete this list</a></p>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}
+<script src="/static/admin.js" defer></script>
+{% endblock %}

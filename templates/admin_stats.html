@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}{{ child.name }} · spellbot{% endblock %}
+{% block body_class %}admin{% endblock %}
+{% block body %}
+{% include "admin_nav.html" %}
+<main id="main" class="wrap">
+  <h1>{{ child.name }}</h1>
+  {% if report.pooled_percent is none %}
+    <p class="lead">No sittings yet.</p>
+  {% else %}
+    <p class="score small">{{ report.pooled_percent }}%</p>
+    <p>Average score from {{ report.pooled_correct }} of {{ report.pooled_attempts }} first tries.</p>
+    <p>
+      {{ trend_label }}
+      {% if report.scores|length >= 2 %}
+        · Recent sittings {{ report.recent_percent }}%
+      {% endif %}
+    </p>
+  {% endif %}
+
+  <section class="chart-block" aria-labelledby="chart-heading">
+    <h2 id="chart-heading">Sittings</h2>
+    {% if points %}
+      {{ chart_svg | safe }}
+      <ol class="score-list">
+        {% for point in points %}
+          <li>{{ point.label }} · {{ point.percent }}%</li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p>The chart starts after the first finished sitting.</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>Words</h2>
+    {% if not report.words %}
+      <p>No words assigned yet.</p>
+    {% endif %}
+    {% for stat in report.words %}
+      <article class="stat-word">
+        <h3>{{ stat.word }}</h3>
+        <p class="status-{{ stat.status }}">
+          {{ status_labels[stat.status] }}
+          {% if stat.attempts %}
+            · {{ stat.correct }} of {{ stat.attempts }} first tries
+          {% endif %}
+          {% if stat.status == "learned" %}
+            · {{ stat.streak }} in a row
+          {% endif %}
+        </p>
+        {% if stat.last_wrong %}
+          <p>Last try: {{ stat.last_wrong }}</p>
+        {% endif %}
+        <p class="muted">{{ stat.lists | join(", ") }}</p>
+      </article>
+    {% endfor %}
+  </section>
+</main>
+{% endblock %}

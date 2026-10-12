@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}spellbot{% endblock %}
+{% block body %}
+<main id="main" class="wrap">
+  <p class="brand"><span class="mark" aria-hidden="true">sp</span> spellbot</p>
+  <h1>Who is practising?</h1>
+  {% if children %}
+    <div class="name-list">
+      {% for child in children %}
+        <a class="name-card" href="/c/{{ child.id }}">{{ child.name }}</a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="lead">No one is here yet. A grown-up can add a child and a word list.</p>
+  {% endif %}
+  <p class="footer-link"><a href="/admin">Grown-ups</a></p>
+</main>
+{% endblock %}

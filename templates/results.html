@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ child.name }} · spellbot{% endblock %}
+{% block body %}
+<main id="main" class="wrap">
+  <p class="brand"><span class="mark" aria-hidden="true">sp</span> spellbot</p>
+  <h1>{{ child.name }}</h1>
+  {% if score is none %}
+    <p class="lead">No words this time.</p>
+  {% else %}
+    <p class="score">{{ score }}%</p>
+    <p class="lead">{{ sitting.correct_count }} of {{ sitting.attempt_count }} on the first try.</p>
+    {% if fixes == 1 %}
+      <p>You fixed 1 after a second look.</p>
+    {% elif fixes > 1 %}
+      <p>You fixed {{ fixes }} after a second look.</p>
+    {% endif %}
+  {% endif %}
+  <section class="chart-block" aria-labelledby="chart-heading">
+    <h2 id="chart-heading">Your sittings</h2>
+    {% if points %}
+      {{ chart_svg | safe }}
+      {% if points|length == 1 %}
+        <p>This is the first mark on the chart.</p>
+      {% endif %}
+      <ol class="score-list">
+        {% for point in points %}
+          <li{% if point.current %} class="current"{% endif %}>{{ point.label }} · {{ point.percent }}%</li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p>Finish a sitting with a word in it, and the chart will start here.</p>
+    {% endif %}
+  </section>
+  <p class="footer-link"><a class="button" href="/">Done</a></p>
+</main>
+{% endblock %}

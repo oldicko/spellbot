@@ -1,0 +1,12 @@
+<header class="admin-bar">
+  <a class="brand" href="/admin"><span class="mark" aria-hidden="true">sp</span> spellbot</a>
+  <nav>
+    <a href="/admin">Children</a>
+    <a href="/admin/lists">Word lists</a>
+    <a href="/">Practice</a>
+  </nav>
+  <form method="post" action="/admin/logout">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="text-button" type="submit">Log out</button>
+  </form>
+</header>
