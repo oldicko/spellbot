@@ -13,6 +13,14 @@ from app.spelling import normalise
 
 log = logging.getLogger("spellbot.tts")
 
+# Slower and steadier than conversation, so each sound in a short spelling word
+# is held instead of running into the next one. The style and these numbers are
+# part of the wav cache key, so a change does not replay an older recording.
+SPEECH_STYLE = "clear-v1"
+LENGTH_SCALE = 1.65
+NOISE_SCALE = 0.333
+NOISE_W_SCALE = 0.333
+
 
 class VoiceError(Exception):
     pass
@@ -63,7 +71,7 @@ class PiperVoiceEngine:
     def wav_for(self, text: str) -> bytes:
         if not self.available():
             raise VoiceError("The voice file is not in the container.")
-        key = hashlib.sha256(normalise(text).encode()).hexdigest()
+        key = hashlib.sha256(self._cache_label(text).encode()).hexdigest()
         path = self.cache_dir / f"{key}.wav"
         if path.is_file() and path.stat().st_size > 44:
             return path.read_bytes()
@@ -79,12 +87,26 @@ class PiperVoiceEngine:
             voice = self._ensure_loaded()
             from piper.config import SynthesisConfig
 
-            # A single spelling word is easier to hear a little slower than conversation.
-            config = SynthesisConfig(length_scale=1.12, normalize_audio=True)
+            # A final stop lets the last sound finish instead of being clipped.
+            spoken = text.strip()
+            if spoken and spoken[-1] not in ".!?":
+                spoken = f"{spoken}."
+            config = SynthesisConfig(
+                length_scale=LENGTH_SCALE,
+                noise_scale=NOISE_SCALE,
+                noise_w_scale=NOISE_W_SCALE,
+                normalize_audio=True,
+            )
             buffer = io.BytesIO()
             with wave.open(buffer, "wb") as wav_file:
-                voice.synthesize_wav(text, wav_file, syn_config=config)
+                voice.synthesize_wav(spoken, wav_file, syn_config=config)
             return buffer.getvalue()
+
+    def _cache_label(self, text: str) -> str:
+        return (
+            f"{SPEECH_STYLE}|{LENGTH_SCALE}|{NOISE_SCALE}|{NOISE_W_SCALE}"
+            f"|{self.model_path.name}|{normalise(text)}"
+        )
 
     def _ensure_loaded(self):
         if self._voice is None:

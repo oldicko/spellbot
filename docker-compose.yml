@@ -10,7 +10,7 @@ services:
       - .env
     environment:
       DATA_DIR: /data
-      VOICE_PATH: /app/voices/en_GB-cori-medium.onnx
+      VOICE_PATH: /app/voices/en_GB-cori-high.onnx
       TZ: Europe/London
     volumes:
       - spellbot-data:/data

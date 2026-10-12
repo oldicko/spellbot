@@ -2,7 +2,7 @@
 
 A small spelling practice site for a home server. A child picks their name, hears a word, and types it. You keep the word lists, the sitting length, and the scores.
 
-The voice is offline British English (Piper, Cori), so the container does not need the internet after it is built. Scores live in a SQLite file on a Docker volume.
+The voice is offline British English. It uses Piper with the clearer Cori high model, spoken slowly so each sound in the word stays distinct. The container does not need the internet after it is built. Scores live in a SQLite file on a Docker volume.
 
 ## Run it on Proxmox
 
@@ -57,7 +57,7 @@ Each child has an average score across every first try, a trend from recent sitt
 
 ## Voice licence
 
-spellbot itself is MIT. The image also installs [Piper](https://github.com/OHF-Voice/piper1-gpl) (`piper-tts`, GPL-3.0-or-later) and the Cori voice. Cori is a UK English voice trained on public-domain LibriVox recordings.
+spellbot itself is MIT. The image also installs [Piper](https://github.com/OHF-Voice/piper1-gpl) (`piper-tts`, GPL-3.0-or-later) and the Cori high voice. Cori is a UK English voice trained on public-domain LibriVox recordings.
 
 ## Develop without Docker
 

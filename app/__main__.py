@@ -20,7 +20,7 @@ def main() -> None:
         print("Set ADMIN_PASSWORD to at least 4 characters.", file=sys.stderr)
         raise SystemExit(1)
     data_dir = Path(os.environ.get("DATA_DIR", "data"))
-    voice_path = Path(os.environ.get("VOICE_PATH", "voices/en_GB-cori-medium.onnx"))
+    voice_path = Path(os.environ.get("VOICE_PATH", "voices/en_GB-cori-high.onnx"))
     voice = PiperVoiceEngine(voice_path, data_dir / "tts-cache")
     app = create_app(
         data_dir=data_dir,

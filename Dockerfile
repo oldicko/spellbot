@@ -4,7 +4,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     DATA_DIR=/data \
-    VOICE_PATH=/app/voices/en_GB-cori-medium.onnx \
+    VOICE_PATH=/app/voices/en_GB-cori-high.onnx \
     TZ=Europe/London \
     PORT=8080
 
@@ -16,9 +16,11 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt \
-    && mkdir -p /app/voices \
-    && python -m piper.download_voices en_GB-cori-medium --data-dir /app/voices
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Cori high is the same British speaker as medium, with a cleaner recording.
+RUN mkdir -p /app/voices \
+    && python -m piper.download_voices en_GB-cori-high --data-dir /app/voices
 
 COPY app ./app
 COPY templates ./templates
