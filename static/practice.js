@@ -8,14 +8,21 @@
   const input = document.getElementById("spelling");
   const check = document.getElementById("check");
   const hear = document.getElementById("hear");
+  const hearLabel = document.getElementById("hear-label");
   const nextButton = document.getElementById("next");
   const timerEl = document.getElementById("timer");
   const finish = document.getElementById("finish");
   const finishPanel = document.getElementById("finish-panel");
   const finishYes = document.getElementById("finish-yes");
   const finishNo = document.getElementById("finish-no");
+  const keys = document.getElementById("letter-keys");
 
   const audio = new Audio();
+  const touchQuery = window.matchMedia("(hover: none) and (pointer: coarse)");
+  let useKeys = false;
+  let caretPos = 0;
+  let caretEnd = 0;
+  let pinning = false;
   let deadline = Date.now() + boot.remainingSeconds * 1000;
   let phase = boot.phase || "spell";
   let audioUrl = boot.audioUrl;
@@ -84,6 +91,99 @@
     const locked = value || phase === "reveal";
     check.disabled = locked;
     input.disabled = locked;
+    keys.querySelectorAll("button").forEach(function (button) {
+      button.disabled = locked;
+    });
+  }
+
+  function syncKeys() {
+    keys.hidden = !useKeys || form.hidden;
+  }
+
+  function rememberCaret() {
+    if (document.activeElement !== input || input.selectionStart == null) {
+      return;
+    }
+    caretPos = input.selectionStart;
+    caretEnd = input.selectionEnd;
+  }
+
+  function caret() {
+    if (document.activeElement === input && input.selectionStart != null) {
+      return [input.selectionStart, input.selectionEnd];
+    }
+    return [caretPos, caretEnd];
+  }
+
+  function writeAt(next, pos) {
+    input.value = next;
+    caretPos = pos;
+    caretEnd = pos;
+    if (document.activeElement === input && input.setSelectionRange) {
+      input.setSelectionRange(pos, pos);
+    }
+  }
+
+  function insert(ch) {
+    if (input.disabled || phase === "reveal") {
+      return;
+    }
+    const bounds = caret();
+    const next = input.value.slice(0, bounds[0]) + ch + input.value.slice(bounds[1]);
+    if (next.length > 80) {
+      return;
+    }
+    writeAt(next, bounds[0] + ch.length);
+  }
+
+  function backspace() {
+    if (input.disabled || phase === "reveal") {
+      return;
+    }
+    const bounds = caret();
+    let start = bounds[0];
+    const end = bounds[1];
+    if (start === end) {
+      if (start === 0) {
+        return;
+      }
+      start -= 1;
+    }
+    writeAt(input.value.slice(0, start) + input.value.slice(end), start);
+  }
+
+  function applyTouchMode() {
+    useKeys = touchQuery.matches;
+    document.body.classList.toggle("touch-keys", useKeys);
+    // Readonly stops the tablet keyboard, so its spelling suggestions stay off.
+    input.readOnly = useKeys;
+    input.inputMode = useKeys ? "none" : "text";
+    input.spellcheck = false;
+    input.autocapitalize = "none";
+    if ("autocorrect" in input) {
+      input.autocorrect = false;
+    }
+    if ("writingSuggestions" in input) {
+      input.writingSuggestions = "false";
+    }
+    syncKeys();
+  }
+
+  function pinViewport() {
+    if (pinning) {
+      return;
+    }
+    pinning = true;
+    const vv = window.visualViewport;
+    const height = vv ? vv.height : window.innerHeight;
+    const top = vv ? vv.offsetTop : 0;
+    document.documentElement.style.setProperty("--vv-height", Math.round(height) + "px");
+    document.documentElement.style.setProperty("--vv-top", Math.round(top) + "px");
+    document.body.classList.toggle("short-practice", height < 700);
+    if (window.scrollX || window.scrollY) {
+      window.scrollTo(0, 0);
+    }
+    pinning = false;
   }
 
   function speak(url) {
@@ -98,11 +198,24 @@
     }
     played.then(function () {
       hear.classList.remove("needs-tap");
-      hear.textContent = "Hear the word";
+      hearLabel.textContent = "Hear the word";
     }).catch(function () {
       hear.classList.add("needs-tap");
-      hear.textContent = "Tap to hear the word";
+      hearLabel.textContent = "Tap to hear the word";
     });
+  }
+
+  function focusField() {
+    if (form.hidden || input.disabled || !finishPanel.hidden) {
+      return;
+    }
+    if (document.activeElement === input) {
+      return;
+    }
+    input.focus();
+    if (input.setSelectionRange) {
+      input.setSelectionRange(caretPos, caretEnd);
+    }
   }
 
   function showSpell(parts, url) {
@@ -113,9 +226,12 @@
     showAnswerWord("", false);
     renderParts(parts);
     input.value = "";
+    caretPos = 0;
+    caretEnd = 0;
     nextButton.hidden = true;
     form.hidden = false;
     setBusy(false);
+    syncKeys();
     input.focus();
     speak(url);
   }
@@ -165,11 +281,17 @@
       showAnswerWord("", false);
       if (typeof data.prefill === "string") {
         input.value = data.prefill;
+        caretPos = input.value.length;
+        caretEnd = caretPos;
       }
       nextButton.hidden = true;
       form.hidden = false;
       setBusy(false);
+      syncKeys();
       input.focus();
+      if (input.setSelectionRange) {
+        input.setSelectionRange(caretPos, caretEnd);
+      }
       return;
     }
     if (data.phase === "next" || data.phase === "done") {
@@ -182,6 +304,7 @@
       }
       form.hidden = true;
       setBusy(true);
+      syncKeys();
       schedule(data);
     }
   }
@@ -209,8 +332,130 @@
     });
   });
 
+  let pointedAt = 0;
+
+  function pressKey(button) {
+    const key = button.getAttribute("data-key");
+    if (key === "backspace") {
+      backspace();
+      return;
+    }
+    if (key) {
+      insert(key);
+    }
+  }
+
+  function releaseKey() {
+    keys.querySelectorAll(".pressed").forEach(function (button) {
+      button.classList.remove("pressed");
+    });
+  }
+
+  keys.addEventListener("pointerdown", function (event) {
+    const button = event.target.closest("button");
+    if (!button || button.disabled) {
+      return;
+    }
+    event.preventDefault();
+    pointedAt = Date.now();
+    button.classList.add("pressed");
+    pressKey(button);
+  });
+  keys.addEventListener("pointerup", releaseKey);
+  keys.addEventListener("pointercancel", releaseKey);
+  keys.addEventListener("click", function (event) {
+    const button = event.target.closest("button");
+    if (!button || button.disabled || Date.now() - pointedAt < 700) {
+      return;
+    }
+    pressKey(button);
+  });
+  document.addEventListener("selectionchange", rememberCaret);
+  input.addEventListener("beforeinput", function (event) {
+    if (!useKeys && event.inputType === "insertText" && event.data === " ") {
+      event.preventDefault();
+    }
+  });
+  document.addEventListener("keydown", function (event) {
+    if (event.metaKey || event.ctrlKey || event.altKey) {
+      return;
+    }
+    const target = event.target;
+    if (target && target.closest && target.closest("#finish, #finish-panel")) {
+      return;
+    }
+    if (!finishPanel.hidden) {
+      return;
+    }
+    if (!useKeys) {
+      if (form.hidden || input.disabled || phase === "reveal") {
+        return;
+      }
+      if (event.key === " " && !event.repeat) {
+        event.preventDefault();
+        speak(audioUrl);
+        focusField();
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        form.requestSubmit();
+      }
+      return;
+    }
+    if (input.disabled || phase === "reveal") {
+      return;
+    }
+    if (event.key === "Backspace") {
+      event.preventDefault();
+      backspace();
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      form.requestSubmit();
+      return;
+    }
+    if (event.key.length === 1) {
+      event.preventDefault();
+      insert(event.key);
+    }
+  });
+  document.addEventListener("pointerdown", function (event) {
+    // A mouse click on the sentence would blur the field. Cancelling that
+    // press keeps the caret in place. Touch presses still scroll.
+    if (event.pointerType === "touch") {
+      return;
+    }
+    if (form.hidden || input.disabled || !finishPanel.hidden) {
+      return;
+    }
+    const target = event.target;
+    if (target && target.closest && target.closest("#spelling, #finish, #finish-panel")) {
+      return;
+    }
+    event.preventDefault();
+  });
+  document.addEventListener("focusin", function (event) {
+    if (event.target === input) {
+      return;
+    }
+    if (event.target.closest && event.target.closest("#finish, #finish-panel")) {
+      return;
+    }
+    window.setTimeout(focusField, 0);
+  });
+
+  function holdFocus(event) {
+    if (event.target.closest && event.target.closest("button")) {
+      event.preventDefault();
+    }
+  }
+  hear.addEventListener("pointerdown", holdFocus);
+  check.addEventListener("pointerdown", holdFocus);
   hear.addEventListener("click", function () {
     speak(audioUrl);
+    focusField();
   });
   nextButton.addEventListener("click", goOn);
   finish.addEventListener("click", function () {
@@ -254,8 +499,23 @@
     feedbackEl.textContent = "Have another go.";
     renderHint(boot.hint);
     input.value = boot.prefill || "";
+    caretPos = input.value.length;
+    caretEnd = caretPos;
+  }
+  applyTouchMode();
+  pinViewport();
+  if (touchQuery.addEventListener) {
+    touchQuery.addEventListener("change", applyTouchMode);
+  }
+  window.addEventListener("resize", pinViewport);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", pinViewport);
+    window.visualViewport.addEventListener("scroll", pinViewport);
   }
   input.focus();
+  if (input.setSelectionRange) {
+    input.setSelectionRange(caretPos, caretEnd);
+  }
   speak(boot.audioUrl);
   paintTimer();
   window.setInterval(paintTimer, 250);

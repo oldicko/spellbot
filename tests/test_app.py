@@ -119,6 +119,12 @@ def test_practice_hides_the_spelling_and_scores_the_first_try(tmp_path):
     assert "quartz" not in lowered
     assert "xylophone" not in lowered
     assert "crystal is pink" in lowered
+    assert 'writingsuggestions="false"' in page.text
+    assert 'autocorrect="off"' in page.text
+    assert 'spellcheck="false"' in page.text
+    assert 'id="letter-keys"' in page.text
+    assert 'class="key-hint">Space' in page.text
+    assert 'class="key-hint">Enter' in page.text
 
     audio = client.get(f"/play/{token}/audio")
     assert audio.status_code == 200

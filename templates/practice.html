@@ -16,19 +16,67 @@
     </div>
   </div>
   <main id="main" class="practice-main">
-    <p id="feedback" class="feedback" aria-live="polite"></p>
-    <p id="sentence" class="sentence"></p>
-    <p id="answer-word" class="answer-word" hidden></p>
-    <div id="hint"></div>
-    <form id="answer-form">
+    <div class="practice-read">
+      <p id="feedback" class="feedback" aria-live="polite"></p>
+      <p id="sentence" class="sentence"></p>
+      <p id="answer-word" class="answer-word" hidden></p>
+      <div id="hint"></div>
+    </div>
+    <form id="answer-form" autocomplete="off" autocorrect="off" writingsuggestions="false">
       <label for="spelling">Your spelling</label>
-      <input id="spelling" name="spelling" type="text" maxlength="80" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="done">
+      <input id="spelling" name="spelling" type="text" maxlength="80" autocapitalize="none" autocorrect="off" autocomplete="off" spellcheck="false" writingsuggestions="false" enterkeyhint="done" inputmode="text">
       <div class="actions">
-        <button type="button" id="hear" class="secondary">Hear the word</button>
-        <button type="submit" id="check">Check</button>
+        <button type="button" id="hear" class="secondary" aria-keyshortcuts="Space">
+          <span id="hear-label">Hear the word</span>
+          <kbd class="key-hint">Space</kbd>
+        </button>
+        <button type="submit" id="check" aria-keyshortcuts="Enter">
+          Check
+          <kbd class="key-hint">Enter</kbd>
+        </button>
       </div>
     </form>
     <button type="button" id="next" class="secondary wide" hidden>Next</button>
+    <div id="letter-keys" class="letter-keys" role="group" aria-label="Letter keys">
+      <div class="key-row">
+        <button type="button" data-key="q">q</button>
+        <button type="button" data-key="w">w</button>
+        <button type="button" data-key="e">e</button>
+        <button type="button" data-key="r">r</button>
+        <button type="button" data-key="t">t</button>
+        <button type="button" data-key="y">y</button>
+        <button type="button" data-key="u">u</button>
+        <button type="button" data-key="i">i</button>
+        <button type="button" data-key="o">o</button>
+        <button type="button" data-key="p">p</button>
+      </div>
+      <div class="key-row">
+        <button type="button" data-key="a">a</button>
+        <button type="button" data-key="s">s</button>
+        <button type="button" data-key="d">d</button>
+        <button type="button" data-key="f">f</button>
+        <button type="button" data-key="g">g</button>
+        <button type="button" data-key="h">h</button>
+        <button type="button" data-key="j">j</button>
+        <button type="button" data-key="k">k</button>
+        <button type="button" data-key="l">l</button>
+      </div>
+      <div class="key-row">
+        <button type="button" data-key="z">z</button>
+        <button type="button" data-key="x">x</button>
+        <button type="button" data-key="c">c</button>
+        <button type="button" data-key="v">v</button>
+        <button type="button" data-key="b">b</button>
+        <button type="button" data-key="n">n</button>
+        <button type="button" data-key="m">m</button>
+      </div>
+      <div class="key-row">
+        <button type="button" class="wide" data-key=" ">Space</button>
+        <button type="button" data-key="'" aria-label="Apostrophe">'</button>
+        <button type="button" data-key="-" aria-label="Hyphen">-</button>
+        <button type="button" class="wide" data-key="backspace">Delete</button>
+      </div>
+    </div>
   </main>
 </div>
 <script id="boot" type="application/json">{{ boot_json | safe }}</script>

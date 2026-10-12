@@ -224,13 +224,29 @@ code {
   outline-offset: 3px;
 }
 
+html:has(body.practice) {
+  height: 100%;
+  overflow: hidden;
+}
+
+body.practice {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 .practice-shell {
-  min-height: 100dvh;
+  position: fixed;
+  top: var(--vv-top, 0px);
+  left: 0;
+  right: 0;
+  height: var(--vv-height, 100dvh);
   display: flex;
   flex-direction: column;
   width: min(46rem, 100%);
-  margin: 0 auto;
-  padding: 0.8rem 1rem 1.2rem;
+  margin-inline: auto;
+  padding: 0.6rem 1rem max(0.4rem, env(safe-area-inset-bottom));
+  overflow: hidden;
+  touch-action: manipulation;
 }
 
 .topbar {
@@ -261,11 +277,29 @@ code {
 
 .practice-main {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 0.9rem;
-  padding: 1rem 0 0.4rem;
+  justify-content: flex-end;
+  gap: 0.7rem;
+  padding: 0.4rem 0 0.15rem;
+}
+
+.practice-read {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0.7rem;
+}
+
+.practice-read::before,
+.practice-read::after {
+  content: "";
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 .sentence {
@@ -322,11 +356,90 @@ code {
 
 .length-note { margin: 0.4rem 0 0; color: var(--bad-ink); }
 
-#answer-form { display: grid; gap: 0.7rem; }
+#answer-form { display: grid; gap: 0.55rem; flex-shrink: 0; }
 #spelling { font-size: 1.5rem; padding: 0.85rem 1rem; }
+#next { flex-shrink: 0; }
+
+.letter-keys { display: none; }
+
+body.touch-keys .letter-keys {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 0.32rem;
+  padding: 0.4rem;
+  border-radius: 0.9rem;
+  background: #e7e1d4;
+}
+
+.key-row {
+  display: flex;
+  justify-content: center;
+  gap: 0.28rem;
+}
+
+.letter-keys button {
+  flex: 1 1 0;
+  max-width: 3.25rem;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: 0.15rem;
+  border-radius: 0.55rem;
+  background: white;
+  color: var(--ink);
+  border: 2px solid var(--line);
+  font-size: 1.25rem;
+  font-weight: 700;
+  touch-action: manipulation;
+}
+
+.letter-keys button.wide {
+  flex-grow: 1.6;
+  max-width: 7.5rem;
+  font-size: 1rem;
+}
+
+.letter-keys button:active,
+.letter-keys button.pressed {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.letter-keys button:disabled { opacity: 0.45; }
+
+body.short-practice .practice-main { gap: 0.4rem; }
+body.short-practice .practice-read { gap: 0.35rem; }
+body.short-practice .sentence { font-size: 1.25rem; line-height: 1.35; }
+body.short-practice .blank { width: 4.5rem; }
+body.short-practice .feedback { min-height: 0; font-size: 1.05rem; }
+body.short-practice .answer-word { font-size: 1.8rem; }
+body.short-practice #spelling { font-size: 1.15rem; padding: 0.45rem 0.7rem; }
+body.short-practice .practice-shell button { min-height: 2.55rem; }
+body.short-practice .letter-keys { gap: 0.22rem; padding: 0.28rem; }
+body.short-practice .letter-keys button { min-height: 2.35rem; font-size: 1.15rem; }
+body.short-practice .letter-keys button.wide { font-size: 0.95rem; }
 
 .actions { display: flex; gap: 0.7rem; }
-.actions button { flex: 1; }
+.actions button {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+}
+
+.key-hint {
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.2;
+  border: 2px solid currentColor;
+  border-radius: 0.4rem;
+  padding: 0.05rem 0.4rem;
+}
+
+body.touch-keys .key-hint { display: none; }
 
 .needs-tap { outline: 3px solid var(--accent); outline-offset: 2px; }
 
