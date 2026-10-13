@@ -22,7 +22,7 @@ Open `http://<the-server>:8080`. Grown-up pages are at `http://<the-server>:8080
 
 The first build downloads the offline voice model, so it needs the network once. Later restarts do not. The first word after a start can take a few seconds while the voice wakes up. After that, repeats are quick.
 
-To record a clearer voice, create a key at [Google AI Studio](https://aistudio.google.com/apikey) and set `GEMINI_API_KEY` in `.env`. Restart spellbot. It saves a slow British reading of every word on every list onto the data volume. Practice plays a saved recording as soon as that word is ready, and uses the offline voice until then. Open Play the voice on the Children page to hear it. `GEMINI_TTS_VOICE` chooses the speaker (the default is `Sulafat`). Changing the voice records the words again. The key stays in `.env` and is not sent to the tablets.
+To record a clearer voice, create a key at [Google AI Studio](https://aistudio.google.com/apikey) and set `GEMINI_API_KEY` in `.env`. Restart spellbot. It saves a slow British reading of every word on every list onto the data volume. The voice service allows 10 recordings a minute, so a full list takes a while, and spellbot waits when it reaches that limit. Practice plays a saved recording as soon as that word is ready, and uses the offline voice until then. Open Play the voice on the Children page to hear it. `GEMINI_TTS_VOICE` chooses the speaker (the default is `Sulafat`). Changing the voice records the words again. The key stays in `.env` and is not sent to the tablets.
 
 Keep port 8080 on the home network. This app is not meant to be published on the internet. If you put HTTPS in front of it, set `SPELLBOT_SECURE_COOKIES=1` in `.env`.
 

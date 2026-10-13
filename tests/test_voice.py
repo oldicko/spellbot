@@ -3,7 +3,13 @@ from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
 
-from app.gemini_tts import GeminiSpeaker, LibraryVoice, WordRecorder, audio_from_response
+from app.gemini_tts import (
+    GeminiSpeaker,
+    LibraryVoice,
+    WordRecorder,
+    _retry_after_seconds,
+    audio_from_response,
+)
 from app.main import create_app
 from app.spelling import ParsedWord
 from app.store import Store
@@ -116,6 +122,47 @@ def test_preview_records_with_gemini(tmp_path):
     assert voice.preview(SAMPLE_LINE) == wav
     _payload_of(calls, SAMPLE_LINE)
     assert voice.fallback.spoken == []
+
+
+def test_rate_limit_waits_and_then_finishes_the_list(tmp_path):
+    calls = []
+    wav = _silent_wav()
+    limited = {"left": 1}
+
+    def transport(payload, api_key):
+        spoken = payload["input"][0]["content"][0]["text"]
+        calls.append(spoken)
+        if limited["left"]:
+            limited["left"] -= 1
+            raise VoiceError("rate", retryable=True, retry_after=55)
+        encoded = base64.b64encode(wav).decode()
+        return {
+            "steps": [
+                {"type": "model_output", "content": [{"type": "audio", "data": encoded}]}
+            ]
+        }
+
+    slept = []
+    recorder = WordRecorder(
+        _speaker(tmp_path, transport), pause=0, sleeper=slept.append
+    )
+    recorder.submit(["bicycle", "breathe"])
+    recorder.wait()
+    assert calls == ["bicycle.", "bicycle.", "breathe."]
+    assert slept == [56]
+    assert recorder.pending_count() == 0
+    assert recorder.error is None
+    assert recorder.speaker.cached("bicycle") == wav
+
+
+def test_google_retry_delay_is_read_from_the_message():
+    detail = (
+        "Rate limit exceeded for model gemini-3.8-flash-tts "
+        "(limit: 10 requests per minute on Tier 1). Please retry in 55s."
+    )
+    assert _retry_after_seconds(detail) == 55
+    assert _retry_after_seconds("Please retry in 17h27m55s.") == 17 * 3600 + 27 * 60 + 55
+    assert _retry_after_seconds("rejected") is None
 
 
 def test_recording_stops_after_repeated_failures(tmp_path):

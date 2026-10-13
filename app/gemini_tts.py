@@ -10,6 +10,7 @@ import base64
 import hashlib
 import json
 import logging
+import re
 import threading
 import time
 import urllib.error
@@ -31,6 +32,9 @@ STYLE_PROMPT = (
 )
 _ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/interactions"
 _RETRYABLE_HTTP = {429, 500, 502, 503, 504}
+# Tier 1 allows 10 recordings a minute. This gap keeps a full list under that.
+REQUEST_GAP = 7.0
+_RETRY_IN = re.compile(r"retry in (?:(\d+)h)?(?:(\d+)m)?(?:(\d+(?:\.\d+)?)s)?", re.I)
 
 
 class GeminiSpeaker:
@@ -102,7 +106,9 @@ class GeminiSpeaker:
                 return audio_from_response(self._transport(payload, self.api_key))
             except VoiceError as exc:
                 last = exc
-                if not exc.retryable or attempt == 2:
+                # A rate limit says how long to wait. Retrying immediately spends
+                # the remaining allowance and makes the next word fail too.
+                if exc.retry_after or not exc.retryable or attempt == 2:
                     raise
                 if self.pause:
                     time.sleep(self.pause * (attempt + 1))
@@ -117,10 +123,18 @@ class GeminiSpeaker:
 class WordRecorder:
     """Save missing words in the background. One recording at a time."""
 
-    def __init__(self, speaker: GeminiSpeaker, *, pause: float = 0.3) -> None:
+    def __init__(
+        self,
+        speaker: GeminiSpeaker,
+        *,
+        pause: float = REQUEST_GAP,
+        sleeper=None,
+    ) -> None:
         self.speaker = speaker
         self.pause = pause
         self.error: str | None = None
+        self.waiting_seconds = 0
+        self._sleeper = sleeper or time.sleep
         self._lock = threading.Lock()
         self._pending: list[str] = []
         self._running = False
@@ -164,24 +178,52 @@ class WordRecorder:
             with self._lock:
                 if not self._pending:
                     self._running = False
+                    self.waiting_seconds = 0
                     return
                 text = self._pending.pop(0)
             try:
                 self.speaker.record(text)
-            except Exception:
-                log.exception("Could not record %r", text)
+            except VoiceError as exc:
+                if exc.retryable:
+                    failures = 0
+                    delay = _wait_seconds(exc)
+                    with self._lock:
+                        self._pending.insert(0, text)
+                        self.waiting_seconds = delay
+                        still_queued = len(self._pending)
+                    log.warning(
+                        "Voice service asked us to wait %.0f seconds. %s spellings are still queued.",
+                        delay,
+                        still_queued,
+                    )
+                    self._sleeper(delay)
+                    with self._lock:
+                        self.waiting_seconds = 0
+                    continue
+                self._give_up_or_continue(text, failures)
                 failures += 1
-                with self._lock:
-                    self.error = "Some words could not be recorded."
-                    if failures >= 3:
-                        self._pending.clear()
-                        self._running = False
-                        log.error("Stopped recording after repeated failures.")
-                        return
+                if failures >= 3:
+                    return
+            except Exception:
+                self._give_up_or_continue(text, failures)
+                failures += 1
+                if failures >= 3:
+                    return
             else:
                 failures = 0
-            if self.pause:
-                time.sleep(self.pause)
+                log.info("Recorded %s.", text)
+                if self.pause:
+                    self._sleeper(self.pause)
+
+    def _give_up_or_continue(self, text: str, failures: int) -> None:
+        log.exception("Could not record %r", text)
+        with self._lock:
+            self.error = "Some words could not be recorded."
+            if failures + 1 >= 3:
+                self._pending.clear()
+                self._running = False
+                self.waiting_seconds = 0
+                log.error("Stopped recording after repeated failures.")
 
 
 class LibraryVoice:
@@ -248,8 +290,14 @@ class LibraryVoice:
         ready = sum(1 for word in words if self.gemini.cached(word) is not None)
         total = len(words)
         pending = self._recorder.pending_count() if self._recorder is not None else 0
+        waiting = self._recorder.waiting_seconds if self._recorder is not None else 0
         if total == 0:
             return "Add a word list and the new voice will record it."
+        if waiting:
+            return (
+                f"Recorded {ready} of {total} spelling words. "
+                "The voice service allows 10 recordings a minute, so the rest continue slowly."
+            )
         if ready >= total and pending == 0:
             return f"All {total} spelling words use the new voice."
         if self._recorder is not None and self._recorder.error and pending == 0:
@@ -307,6 +355,24 @@ def _spoken(text: str) -> str:
     return spoken
 
 
+def _retry_after_seconds(detail: str) -> float | None:
+    match = _RETRY_IN.search(detail)
+    if match is None or not any(match.groups()):
+        return None
+    hours = int(match.group(1) or 0)
+    minutes = int(match.group(2) or 0)
+    seconds = float(match.group(3) or 0)
+    total = hours * 3600 + minutes * 60 + seconds
+    if total <= 0:
+        return None
+    return total
+
+
+def _wait_seconds(exc: VoiceError) -> float:
+    delay = exc.retry_after if exc.retry_after else 60.0
+    return min(delay + 1, 24 * 60 * 60)
+
+
 def _looks_like_wav(data: bytes) -> bool:
     return len(data) > 44 and data[:4] == b"RIFF" and data[8:12] == b"WAVE"
 
@@ -328,6 +394,7 @@ def _http_transport(payload: dict, api_key: str) -> dict:
         raise VoiceError(
             "The voice service rejected the recording.",
             retryable=exc.code in _RETRYABLE_HTTP,
+            retry_after=_retry_after_seconds(detail) if exc.code == 429 else None,
         ) from exc
     except urllib.error.URLError as exc:
         log.warning("Gemini voice request failed: %s", exc.reason)

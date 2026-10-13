@@ -23,9 +23,16 @@ NOISE_W_SCALE = 0.333
 
 
 class VoiceError(Exception):
-    def __init__(self, message: str, *, retryable: bool = False) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        retryable: bool = False,
+        retry_after: float | None = None,
+    ) -> None:
         super().__init__(message)
         self.retryable = retryable
+        self.retry_after = retry_after
 
 
 # The grown-up preview and the recording queue must use the same sentence,
