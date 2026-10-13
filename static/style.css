@@ -159,6 +159,11 @@ fieldset {
 }
 
 .footer-link { margin-top: 2rem; }
+.license {
+  margin: 1.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
 .last-score { color: var(--muted); }
 
 .errors {

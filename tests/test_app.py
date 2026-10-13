@@ -111,6 +111,7 @@ def test_practice_hides_the_spelling_and_scores_the_first_try(tmp_path):
     home = client.get("/")
     assert "Grace" in home.text
     assert "xylophone" not in home.text
+    assert "Copyright (c) 2026 Charles Dickinson. MIT License." in home.text
 
     token = start(client)
     page = client.get(f"/play/{token}")
