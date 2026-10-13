@@ -11,6 +11,10 @@
   const hearLabel = document.getElementById("hear-label");
   const nextButton = document.getElementById("next");
   const timerEl = document.getElementById("timer");
+  const pacePointsEl = document.getElementById("pace-points-value");
+  const paceTrack = document.getElementById("pace-track");
+  const paceYou = document.getElementById("pace-you");
+  const paceLabel = document.getElementById("pace-label");
   const finish = document.getElementById("finish");
   const finishPanel = document.getElementById("finish-panel");
   const finishYes = document.getElementById("finish-yes");
@@ -24,6 +28,10 @@
   let caretEnd = 0;
   let pinning = false;
   let deadline = Date.now() + boot.remainingSeconds * 1000;
+  let scorePoints = typeof boot.points === "number" ? boot.points : 0;
+  const paceBest = typeof boot.best === "number" ? boot.best : null;
+  const paceDuration = boot.durationSeconds > 0 ? boot.durationSeconds : 1;
+  let paceWords = "";
   let phase = boot.phase || "spell";
   let audioUrl = boot.audioUrl;
   let busy = false;
@@ -304,6 +312,10 @@
       deadline = Date.now() + data.remainingSeconds * 1000;
       paintTimer();
     }
+    if (typeof data.points === "number") {
+      scorePoints = data.points;
+      paintPace();
+    }
     if (data.phase === "retry") {
       phase = "retry";
       feedbackEl.textContent = data.message || "Have another go.";
@@ -518,8 +530,42 @@
     const seconds = left % 60;
     timerEl.textContent = minutes + ":" + String(seconds).padStart(2, "0");
     timerEl.classList.toggle("low", left <= 30 && left > 0);
+    paintPace();
     if (left <= 0 && !busy && phase === "spell") {
       endSitting();
+    }
+  }
+
+  function paintPace() {
+    const shown = String(scorePoints);
+    if (pacePointsEl.textContent !== shown) {
+      pacePointsEl.textContent = shown;
+    }
+    if (paceBest === null) {
+      paceTrack.hidden = true;
+      paceLabel.hidden = true;
+      return;
+    }
+    paceTrack.hidden = false;
+    paceLabel.hidden = false;
+    const left = Math.max(0, (deadline - Date.now()) / 1000);
+    const elapsed = Math.min(paceDuration, Math.max(0, paceDuration - left));
+    const delta = scorePoints - paceBest * elapsed / paceDuration;
+    // Five points off the straight line to the best total reaches the end.
+    const fraction = Math.max(-1, Math.min(1, delta / 5));
+    const along = (fraction + 1) / 2;
+    paceYou.style.left = "calc(0.35rem + (100% - 0.7rem) * " + along + ")";
+    const rounded = Math.round(delta);
+    let words = "On pace";
+    if (rounded > 0) {
+      words = rounded === 1 ? "1 ahead" : rounded + " ahead";
+    } else if (rounded < 0) {
+      const behind = -rounded;
+      words = behind === 1 ? "1 behind" : behind + " behind";
+    }
+    if (words !== paceWords) {
+      paceWords = words;
+      paceLabel.textContent = words;
     }
   }
 

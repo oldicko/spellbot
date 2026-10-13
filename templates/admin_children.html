@@ -38,14 +38,14 @@
   {% for card in cards %}
     <section class="card">
       <h2><a href="/admin/children/{{ card.child.id }}/stats">{{ card.child.name }}</a></h2>
-      {% if card.report.pooled_percent is none %}
+      {% if card.report.average_points is none %}
         <p>No sittings yet.</p>
       {% else %}
-        <p>Average score: {{ card.report.pooled_percent }}% from {{ card.report.pooled_correct }} of {{ card.report.pooled_attempts }} first tries.</p>
+        <p>Average score: {{ card.report.average_points }} point{% if card.report.average_points != 1 %}s{% endif %}</p>
         <p>
           {{ card.trend_label }}
           {% if card.report.scores|length >= 2 %}
-            · Recent sittings {{ card.report.recent_percent }}%
+            · Recent sittings {{ card.report.recent_points }} point{% if card.report.recent_points != 1 %}s{% endif %}
           {% endif %}
         </p>
       {% endif %}

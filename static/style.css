@@ -191,6 +191,13 @@ fieldset {
 
 .score.small { font-size: 3.2rem; }
 
+.score-unit {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.score.small .score-unit { font-size: 1.2rem; }
+
 .chart { width: 100%; height: auto; }
 .chart .grid { stroke: var(--line); stroke-width: 1; }
 .chart .line { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
@@ -266,6 +273,61 @@ body.practice {
 }
 
 .timer.low { color: var(--bad-ink); }
+
+.pace {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+  min-height: 1.6rem;
+  margin-top: 0.35rem;
+}
+
+.pace-points {
+  margin: 0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.15rem;
+}
+
+.pace-track {
+  position: relative;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 28%, var(--bg));
+}
+
+.pace-zero {
+  position: absolute;
+  left: 50%;
+  top: -0.18rem;
+  bottom: -0.18rem;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--muted);
+}
+
+.pace-you {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-top: -0.35rem;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: translateX(-50%);
+}
+
+.pace-label {
+  margin: 0;
+  min-width: 4.8rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
 
 .finish-panel {
   background: var(--card);
@@ -434,17 +496,24 @@ body.touch-keys .letter-keys {
 
 .letter-keys button:disabled { opacity: 0.45; }
 
-body.short-practice .practice-main { gap: 0.4rem; }
-body.short-practice .practice-read { gap: 0.35rem; }
+body.short-practice .practice-shell { padding-top: 0.3rem; padding-bottom: 0.15rem; }
+body.short-practice .practice-main { gap: 0.25rem; padding-top: 0.1rem; }
+body.short-practice .practice-read { gap: 0.2rem; }
 body.short-practice .sentence { font-size: 1.25rem; line-height: 1.35; }
 body.short-practice .blank { width: 4.5rem; }
 body.short-practice .feedback { min-height: 0; font-size: 1.05rem; }
 body.short-practice .answer-word { font-size: 1.8rem; }
-body.short-practice #spelling { font-size: 1.15rem; padding: 0.45rem 0.7rem; }
-body.short-practice .practice-shell button { min-height: 2.55rem; }
-body.short-practice .letter-keys { gap: 0.22rem; padding: 0.28rem; }
-body.short-practice .letter-keys button { min-height: 2.35rem; font-size: 1.15rem; }
-body.short-practice .letter-keys button.wide { font-size: 0.95rem; }
+body.short-practice #answer-form { gap: 0.3rem; }
+body.short-practice #spelling { font-size: 1.15rem; padding: 0.3rem 0.7rem; }
+body.short-practice .practice-shell button { min-height: 2.3rem; }
+body.short-practice .letter-keys { gap: 0.12rem; padding: 0.16rem; }
+body.short-practice .letter-keys button { min-height: 2.05rem; font-size: 1.05rem; }
+body.short-practice .letter-keys button.wide { font-size: 0.9rem; }
+body.short-practice .pace { min-height: 1.15rem; margin-top: 0.1rem; }
+body.short-practice .pace-points { font-size: 1rem; }
+body.short-practice .pace-label { font-size: 0.75rem; min-width: 4.2rem; }
+body.short-practice .pace-track { height: 0.4rem; }
+body.short-practice .pace-you { width: 0.6rem; height: 0.6rem; margin-top: -0.3rem; }
 
 .actions { display: flex; gap: 0.7rem; }
 .actions button {

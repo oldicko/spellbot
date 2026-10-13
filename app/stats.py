@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from app.spelling import percent, status_name, streak_of, trend
+from app.spelling import status_name, streak_of, trend
 from app.store import ScoreRow, Store
 
 TREND_LABELS = {
@@ -34,10 +34,8 @@ class WordStat:
 
 @dataclass
 class Report:
-    pooled_percent: int | None
-    pooled_correct: int
-    pooled_attempts: int
-    recent_percent: int | None
+    average_points: int | None
+    recent_points: int | None
     trend: str
     scores: list[ScoreRow]
     words: list[WordStat]
@@ -46,15 +44,11 @@ class Report:
 def build_report(store: Store, child_id: int, now: datetime) -> Report:
     store.close_expired(now, child_id)
     scores = store.score_rows(child_id)
-    correct, attempts = store.pooled(child_id)
-    sitting_percents = [percent(row.correct_count, row.attempt_count) for row in scores]
-    recent = sitting_percents[-5:]
+    sitting_points = [row.points for row in scores]
     return Report(
-        pooled_percent=percent(correct, attempts) if attempts else None,
-        pooled_correct=correct,
-        pooled_attempts=attempts,
-        recent_percent=_average(recent),
-        trend=trend(sitting_percents),
+        average_points=_average(sitting_points),
+        recent_points=_average(sitting_points[-5:]),
+        trend=trend(sitting_points),
         scores=scores,
         words=_word_stats(store, child_id),
     )

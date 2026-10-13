@@ -1,9 +1,9 @@
 """Pure spelling rules: matching, hints, word choice, and scores.
 
-The score of a sitting is the first try only. A second try can fix the
-spelling on screen, and it does not change that score or the learned streak.
-A word is learned after three correct first tries in a row. One miss later
-puts it back to practising.
+A sitting scores points. A correct first try is 2, a correct second look is 1,
+and a miss is 0. The learned streak still uses the first try only. A word is
+learned after three correct first tries in a row. One miss later puts it back
+to practising.
 """
 
 from __future__ import annotations
@@ -118,10 +118,34 @@ def status_name(flags: Sequence[bool]) -> str:
     return "practising"
 
 
-def percent(correct: int, attempts: int) -> int:
-    if attempts <= 0:
-        raise ValueError("attempts must be positive")
-    return (100 * correct + attempts // 2) // attempts
+PACE_SPAN = 5
+
+
+def turn_points(first_correct: bool, second_correct: bool | None) -> int:
+    """Points for one word. A correct first try wins over a second look."""
+    if first_correct:
+        return 2
+    if second_correct:
+        return 1
+    return 0
+
+
+def pace_delta(points: int, best: int | None, elapsed: float, duration: float) -> float | None:
+    """Points ahead of a straight line from 0 to the best total.
+
+    The line is spread across this sitting's planned length. None means there
+    is no finished sitting to chase.
+    """
+    if best is None or duration <= 0:
+        return None
+    spent = min(max(float(elapsed), 0.0), float(duration))
+    expected = best * spent / duration
+    return points - expected
+
+
+def pace_fraction(delta: float) -> float:
+    """Map a point gap onto the pace bar. Five points reaches either end."""
+    return max(-1.0, min(1.0, delta / PACE_SPAN))
 
 
 def trend(scores: Sequence[int]) -> str:

@@ -134,6 +134,7 @@ def test_practice_hides_the_spelling_and_scores_the_first_try(tmp_path):
     assert wrong.status_code == 200
     body = wrong.json()
     assert body["phase"] == "retry"
+    assert body["points"] == 0
     assert "quartz" not in wrong.text
     assert body["hint"]["letters"] == []
     assert body["hint"]["note"] == "A letter is missing."
@@ -141,14 +142,15 @@ def test_practice_hides_the_spelling_and_scores_the_first_try(tmp_path):
     fixed = client.post(f"/play/{token}/answer", json={"spelling": "Quartz"})
     assert fixed.json()["phase"] == "next"
     assert fixed.json()["message"] == "Got it."
+    assert fixed.json()["points"] == 1
     assert "quartz" in fixed.text.casefold()
 
     client.post(f"/play/{token}/finish")
     results = client.get(f"/play/{token}/results")
     assert results.status_code == 200
-    assert "0%" in results.text
-    assert "0 of 1 on the first try." in results.text
-    assert "You fixed 1 after a second look." in results.text
+    assert '1 <span class="score-unit">point</span>' in results.text
+    assert "0 on the first try, 1 on a second look." in results.text
+    assert "%" not in results.text
     assert "xylophone" not in results.text
 
 
@@ -224,7 +226,51 @@ def test_curly_apostrophe_matches_and_expiry_records_a_miss(tmp_path):
     assert expired.status_code == 303
     assert expired.headers["location"].endswith("/results")
     results = client.get(f"/play/{token}/results")
-    assert "0 of 1 on the first try." in results.text
+    assert '0 <span class="score-unit">points</span>' in results.text
+    assert "0 on the first try." in results.text
+
+
+def test_saved_tries_rescore_as_points_and_set_the_best(tmp_path):
+    client, _clock, _voice = make_client(tmp_path)
+    login(client)
+    add_child(client)
+    add_list(client, "Sounds", "quartz | A quartz crystal is pink.", "1")
+
+    first = start(client)
+    opening = client.get(f"/play/{first}")
+    assert '"best": null' in opening.text
+    assert '"points": 0' in opening.text
+    assert '"durationSeconds": 300' in opening.text
+    heard = client.post(f"/play/{first}/answer", json={"spelling": "quartz"}).json()
+    assert heard["points"] == 2
+    client.post(f"/play/{first}/finish")
+
+    results = client.get(f"/play/{first}/results")
+    assert '2 <span class="score-unit">points</span>' in results.text
+    assert "1 on the first try." in results.text
+    assert "The latest is 2 points." in results.text
+    assert "%" not in results.text
+    lobby = client.get("/c/1")
+    assert "Last time: 2 points" in lobby.text
+    children = client.get("/admin")
+    assert "Average score: 2 points" in children.text
+    assert "Grace" in client.get("/").text
+    assert "Sounds" in client.get("/admin/lists").text
+
+    second = start(client)
+    client.post(f"/play/{second}/answer", json={"spelling": "xxxxx"})
+    client.post(f"/play/{second}/finish")
+    missed = client.get(f"/play/{second}/results")
+    assert '0 <span class="score-unit">points</span>' in missed.text
+
+    third = start(client)
+    page = client.get(f"/play/{third}")
+    assert '"best": 2' in page.text
+    assert '"points": 0' in page.text
+    stats = client.get("/admin/children/1/stats")
+    assert "1 point" in stats.text
+    assert "first tries" in stats.text
+    assert "%" not in stats.text
 
 
 def test_bad_paste_is_rejected_whole(tmp_path):

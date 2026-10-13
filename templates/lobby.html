@@ -20,8 +20,8 @@
   {% elif not running %}
     <p>No words yet. Ask a grown-up to add a list.</p>
   {% endif %}
-  {% if latest_percent is not none %}
-    <p class="last-score">Last time: {{ latest_percent }}%</p>
+  {% if latest_points is not none %}
+    <p class="last-score">Last time: {{ latest_points }} point{% if latest_points != 1 %}s{% endif %}</p>
   {% endif %}
   <p class="footer-link"><a href="/">Not {{ child.name }}?</a></p>
 </main>

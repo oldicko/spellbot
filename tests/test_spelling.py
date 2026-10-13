@@ -7,8 +7,10 @@ from app.spelling import (
     colour_attempt,
     normalise,
     parse_word_list,
-    percent,
+    pace_delta,
+    pace_fraction,
     sentence_parts,
+    turn_points,
     status_name,
     trend,
 )
@@ -209,10 +211,19 @@ def test_choose_word_weights_and_does_not_repeat_early():
     assert choose_word(pair, {}, set(), "only", Scripted(0.0)).word_key == "other"
 
 
-def test_percent_and_trend():
-    assert percent(1, 2) == 50
-    assert percent(1, 3) == 33
-    assert percent(2, 3) == 67
+def test_points_pace_and_trend():
+    assert turn_points(True, None) == 2
+    assert turn_points(False, True) == 1
+    assert turn_points(False, False) == 0
+    assert turn_points(False, None) == 0
+    assert pace_delta(19, 100, 60, 300) == -1
+    assert pace_delta(21, 100, 60, 300) == 1
+    assert pace_fraction(pace_delta(19, 100, 60, 300)) == -0.2
+    assert pace_fraction(pace_delta(21, 100, 60, 300)) == 0.2
+    assert pace_fraction(5) == 1
+    assert pace_fraction(-5) == -1
+    assert pace_fraction(8) == 1
+    assert pace_delta(4, None, 60, 300) is None
     assert trend([80, 80]) == "early"
     assert trend([50, 50, 80, 80]) == "up"
     assert trend([80, 80, 50, 50]) == "down"

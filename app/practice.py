@@ -8,12 +8,20 @@ from app.spelling import colour_attempt, sentence_parts
 from app.store import AnswerResult, Sitting, Word
 
 
-def snapshot(sitting: Sitting, word: Word, child_name: str, now: datetime) -> dict:
+def snapshot(
+    sitting: Sitting,
+    word: Word,
+    child_name: str,
+    now: datetime,
+    points: int,
+    best: int | None,
+) -> dict:
     phase = "retry" if sitting.pending_try else "spell"
     hint = None
     if sitting.pending_try:
         letters, note = colour_attempt(sitting.pending_try, word.word_key)
         hint = _hint(letters, note)
+    duration = int((sitting.ends_at - sitting.started_at).total_seconds())
     return {
         "phase": phase,
         "parts": sentence_parts(word.sentence, word.word_key, reveal=False),
@@ -25,6 +33,9 @@ def snapshot(sitting: Sitting, word: Word, child_name: str, now: datetime) -> di
         "finishUrl": f"/play/{sitting.token}/finish",
         "resultsUrl": f"/play/{sitting.token}/results",
         "childName": child_name,
+        "points": points,
+        "best": best,
+        "durationSeconds": duration if duration > 0 else 1,
     }
 
 
@@ -38,6 +49,7 @@ def public_answer(result: AnswerResult) -> dict:
             "hint": _hint(result.letters, result.note),
             "prefill": result.prefill,
             "remainingSeconds": result.remaining_seconds,
+            "points": result.points,
         }
     body: dict = {
         "phase": "done" if result.kind == "done" else "next",
@@ -45,6 +57,7 @@ def public_answer(result: AnswerResult) -> dict:
         "pauseMs": result.pause_ms,
         "resultsUrl": f"/play/{result.token}/results",
         "remainingSeconds": result.remaining_seconds,
+        "points": result.points,
     }
     if result.reveal_sentence is not None and result.reveal_key is not None:
         body["reveal"] = {

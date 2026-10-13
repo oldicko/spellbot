@@ -7,13 +7,8 @@
   {% if score is none %}
     <p class="lead">No words this time.</p>
   {% else %}
-    <p class="score">{{ score }}%</p>
-    <p class="lead">{{ sitting.correct_count }} of {{ sitting.attempt_count }} on the first try.</p>
-    {% if fixes == 1 %}
-      <p>You fixed 1 after a second look.</p>
-    {% elif fixes > 1 %}
-      <p>You fixed {{ fixes }} after a second look.</p>
-    {% endif %}
+    <p class="score">{{ score }} <span class="score-unit">{% if score == 1 %}point{% else %}points{% endif %}</span></p>
+    <p class="lead">{{ sitting.correct_count }} on the first try{% if fixes %}, {{ fixes }} on a second look{% endif %}.</p>
   {% endif %}
   <section class="chart-block" aria-labelledby="chart-heading">
     <h2 id="chart-heading">Your sittings</h2>
@@ -24,7 +19,7 @@
       {% endif %}
       <ol class="score-list">
         {% for point in points %}
-          <li{% if point.current %} class="current"{% endif %}>{{ point.label }} · {{ point.percent }}%</li>
+          <li{% if point.current %} class="current"{% endif %}>{{ point.label }} · {{ point.points }} point{% if point.points != 1 %}s{% endif %}</li>
         {% endfor %}
       </ol>
     {% else %}

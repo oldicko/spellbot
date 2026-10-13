@@ -19,6 +19,7 @@ from app.spelling import (
     colour_attempt,
     display_name,
     normalise,
+    turn_points,
     valid_name,
 )
 
@@ -138,6 +139,7 @@ class ScoreRow:
     started_at: datetime
     correct_count: int
     attempt_count: int
+    points: int
 
 
 @dataclass
@@ -156,6 +158,7 @@ class AnswerResult:
     next_word: ChoiceWord | None = None
     remaining_seconds: int = 0
     attempt_count: int = 0
+    points: int = 0
 
 
 def dump_dt(value: datetime) -> str:
@@ -432,18 +435,8 @@ class Store:
         return _sitting(row) if row else None
 
     def latest_score(self, child_id: int) -> ScoreRow | None:
-        with self.session() as conn:
-            row = conn.execute(
-                """
-                SELECT id, started_at, correct_count, attempt_count
-                FROM sittings
-                WHERE child_id = ? AND finished_at IS NOT NULL AND attempt_count > 0
-                ORDER BY id DESC
-                LIMIT 1
-                """,
-                (child_id,),
-            ).fetchone()
-        return _score(row) if row else None
+        rows = self.score_rows(child_id)
+        return rows[-1] if rows else None
 
     def score_rows(self, child_id: int) -> list[ScoreRow]:
         with self.session() as conn:
@@ -456,20 +449,43 @@ class Store:
                 """,
                 (child_id,),
             ).fetchall()
-        return [_score(row) for row in rows]
+            totals = self._points_by_sitting(conn, [row["id"] for row in rows])
+        return [_score(row, totals[row["id"]]) for row in rows]
 
-    def pooled(self, child_id: int) -> tuple[int, int]:
+    def best_points(self, child_id: int) -> int | None:
+        rows = self.score_rows(child_id)
+        if not rows:
+            return None
+        return max(row.points for row in rows)
+
+    def sitting_points(self, sitting_id: int) -> int:
         with self.session() as conn:
-            row = conn.execute(
-                """
-                SELECT COALESCE(SUM(correct_count), 0) AS correct,
-                       COALESCE(SUM(attempt_count), 0) AS attempts
-                FROM sittings
-                WHERE child_id = ? AND finished_at IS NOT NULL
-                """,
-                (child_id,),
-            ).fetchone()
-        return int(row["correct"]), int(row["attempts"])
+            return self._points(conn, sitting_id)
+
+    def _points(self, conn, sitting_id: int) -> int:
+        rows = conn.execute(
+            "SELECT first_correct, second_correct FROM turns WHERE sitting_id = ?",
+            (sitting_id,),
+        ).fetchall()
+        return _sum_points(rows)
+
+    def _points_by_sitting(self, conn, sitting_ids: list[int]) -> dict[int, int]:
+        totals = {sitting_id: 0 for sitting_id in sitting_ids}
+        if not totals:
+            return totals
+        marks = ",".join("?" for _ in sitting_ids)
+        rows = conn.execute(
+            f"""
+            SELECT sitting_id, first_correct, second_correct
+            FROM turns
+            WHERE sitting_id IN ({marks})
+            """,
+            sitting_ids,
+        ).fetchall()
+        for row in rows:
+            second = None if row["second_correct"] is None else bool(row["second_correct"])
+            totals[row["sitting_id"]] += turn_points(bool(row["first_correct"]), second)
+        return totals
 
     def assigned_words(self, child_id: int) -> list[tuple[Word, str]]:
         with self.session() as conn:
@@ -592,7 +608,12 @@ class Store:
             if row is None:
                 return None
             if row["finished_at"]:
-                return AnswerResult(kind="done", token=token, message="This sitting is over.")
+                return AnswerResult(
+                    kind="done",
+                    token=token,
+                    message="This sitting is over.",
+                    points=self._points(conn, row["id"]),
+                )
             spelling = clean_attempt(raw)
             if not spelling:
                 return AnswerResult(kind="empty", token=token)
@@ -603,8 +624,13 @@ class Store:
                 dealt = self._deal(conn, row, None, now, rng)
                 if dealt is None:
                     self._finish_row(conn, row["id"], now, force=True)
-                    return AnswerResult(kind="done", token=token, message="This sitting is over.")
-                return self._moved_on(row, dealt, now)
+                    return AnswerResult(
+                        kind="done",
+                        token=token,
+                        message="This sitting is over.",
+                        points=self._points(conn, row["id"]),
+                    )
+                return self._moved_on(conn, row, dealt, now)
             correct = normalise(spelling) == word["word_key"]
             if row["pending_try"] is None:
                 if correct:
@@ -624,6 +650,7 @@ class Store:
                     prefill=spelling,
                     remaining_seconds=_remaining(row, now),
                     attempt_count=int(row["attempt_count"]),
+                    points=self._points(conn, row["id"]),
                 )
             self._insert_turn(
                 conn,
@@ -772,9 +799,10 @@ class Store:
             next_word=nxt,
             remaining_seconds=0 if finished else _remaining(sitting_row, now),
             attempt_count=int(sitting_row["attempt_count"]) + 1,
+            points=self._points(conn, sitting_row["id"]),
         )
 
-    def _moved_on(self, sitting_row, dealt: ChoiceWord, now: datetime) -> AnswerResult:
+    def _moved_on(self, conn, sitting_row, dealt: ChoiceWord, now: datetime) -> AnswerResult:
         return AnswerResult(
             kind="next",
             token=sitting_row["token"],
@@ -783,6 +811,7 @@ class Store:
             next_word=dealt,
             remaining_seconds=_remaining(sitting_row, now),
             attempt_count=int(sitting_row["attempt_count"]),
+            points=self._points(conn, sitting_row["id"]),
         )
 
     def _finish_row(self, conn, sitting_id: int, now: datetime, force: bool) -> None:
@@ -853,7 +882,15 @@ def _sitting(row) -> Sitting:
     )
 
 
-def _score(row) -> ScoreRow:
+def _sum_points(rows) -> int:
+    total = 0
+    for row in rows:
+        second = None if row["second_correct"] is None else bool(row["second_correct"])
+        total += turn_points(bool(row["first_correct"]), second)
+    return total
+
+
+def _score(row, points: int) -> ScoreRow:
     started = load_dt(row["started_at"])
     assert started is not None
     return ScoreRow(
@@ -861,6 +898,7 @@ def _score(row) -> ScoreRow:
         started_at=started,
         correct_count=row["correct_count"],
         attempt_count=row["attempt_count"],
+        points=points,
     )
 
 

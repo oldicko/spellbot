@@ -8,6 +8,14 @@
     <p id="timer" class="timer">0:00</p>
     <button type="button" id="finish" class="text-button">Finish</button>
   </header>
+  <div class="pace" id="pace">
+    <p class="pace-points"><span id="pace-points-value">0</span><span class="sr-only"> points</span></p>
+    <div id="pace-track" class="pace-track" hidden>
+      <span class="pace-zero" aria-hidden="true"></span>
+      <span id="pace-you" class="pace-you" aria-hidden="true"></span>
+    </div>
+    <p id="pace-label" class="pace-label" aria-live="polite" hidden></p>
+  </div>
   <div id="finish-panel" class="finish-panel" hidden>
     <p>Finish now? Your score will be saved.</p>
     <div class="actions">

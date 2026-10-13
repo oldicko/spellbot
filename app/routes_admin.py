@@ -15,7 +15,7 @@ from app.auth import (
     password_matches,
 )
 from app.chart import score_chart
-from app.spelling import parse_word_list, percent
+from app.spelling import parse_word_list
 from app.stats import STATUS_LABELS, TREND_LABELS, build_report
 from app.store import StoreError
 from app.tts import SAMPLE_LINE
@@ -187,7 +187,7 @@ def child_stats(request: Request, child_id: int):
     points = [
         {
             "label": format_when(row.started_at, zone),
-            "percent": percent(row.correct_count, row.attempt_count),
+            "points": row.points,
         }
         for row in report.scores
     ]
@@ -200,7 +200,7 @@ def child_stats(request: Request, child_id: int):
             "trend_label": TREND_LABELS[report.trend],
             "status_labels": STATUS_LABELS,
             "points": points,
-            "chart_svg": score_chart([point["percent"] for point in points]),
+            "chart_svg": score_chart([point["points"] for point in points]),
         },
     )
 

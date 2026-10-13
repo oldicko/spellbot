@@ -10,7 +10,6 @@ from fastapi.responses import JSONResponse, RedirectResponse, Response
 
 from app.chart import score_chart
 from app.practice import public_answer, snapshot
-from app.spelling import percent
 from app.stats import build_report
 from app.ui import format_when, json_for_script, render
 
@@ -47,7 +46,7 @@ def lobby(request: Request, child_id: int):
     if child is None:
         raise HTTPException(status_code=404)
     latest = store.latest_score(child_id)
-    latest_percent = percent(latest.correct_count, latest.attempt_count) if latest else None
+    latest_points = latest.points if latest else None
     return render(
         request,
         "lobby.html",
@@ -55,7 +54,7 @@ def lobby(request: Request, child_id: int):
             "child": child,
             "word_count": store.assigned_word_count(child_id),
             "running": store.open_sitting(child_id),
-            "latest_percent": latest_percent,
+            "latest_points": latest_points,
             "error": None,
         },
     )
@@ -77,7 +76,7 @@ def start(request: Request, child_id: int):
                 "child": child,
                 "word_count": 0,
                 "running": None,
-                "latest_percent": None,
+                "latest_points": None,
                 "error": "Add a word list for this child first.",
             },
             status_code=400,
@@ -101,7 +100,14 @@ def play(request: Request, token: str):
     child = store.get_child(sitting.child_id)
     if word is None or child is None:
         raise HTTPException(status_code=404)
-    boot = snapshot(sitting, word, child.name, now)
+    boot = snapshot(
+        sitting,
+        word,
+        child.name,
+        now,
+        store.sitting_points(sitting.id),
+        store.best_points(sitting.child_id),
+    )
     return render(
         request,
         "practice.html",
@@ -173,12 +179,13 @@ def results(request: Request, token: str):
     points = [
         {
             "label": format_when(row.started_at, zone),
-            "percent": percent(row.correct_count, row.attempt_count),
+            "points": row.points,
             "current": row.id == sitting.id,
         }
         for row in report.scores
     ]
-    score = percent(sitting.correct_count, sitting.attempt_count) if sitting.attempt_count else None
+    current = next((row for row in report.scores if row.id == sitting.id), None)
+    score = current.points if current is not None else None
     return render(
         request,
         "results.html",
@@ -188,6 +195,6 @@ def results(request: Request, token: str):
             "score": score,
             "fixes": store.fix_count(sitting.id),
             "points": points,
-            "chart_svg": score_chart([point["percent"] for point in points]),
+            "chart_svg": score_chart([point["points"] for point in points]),
         },
     )

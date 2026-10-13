@@ -34,8 +34,8 @@ The database is the `spellbot-data` volume. Copy that volume's `spellbot.sqlite`
 2. Create a word list and paste words. Assign the list to one or both children.
 3. The child opens the site, taps their name, then Start.
 4. The sentence stays on screen with the word blanked. The voice says the word on its own. Hear the word plays it again.
-5. One wrong try shows green for a letter in the right place and orange for a letter that is not. They get one chance to fix it. Only the first try counts.
-6. Finish, or wait for the timer. The score and a chart of recent sittings are saved.
+5. One wrong try shows green for a letter in the right place and orange for a letter that is not. They get one chance to fix it. A correct first try scores 2 points. A correct second look scores 1. A miss scores 0.
+6. Finish, or wait for the timer. The points and a chart of recent sittings are saved. While they spell, a bar shows their points against the pace of their best sitting.
 
 Capital letters do not matter. Apostrophes do, so `they're` and `theyre` are different. A curly apostrophe from a tablet keyboard still counts.
 
@@ -55,7 +55,7 @@ there | The book is over there.
 
 ## Grown-up statistics
 
-Each child has an average score across every first try, a trend from recent sittings, and a chart. The word list shows learned, practising, and not started. A wrong first try is kept so you can see what they wrote.
+Each child has an average score in points across finished sittings, a trend from recent sittings, and a chart. The word list shows learned, practising, and not started. A wrong first try is kept so you can see what they wrote.
 
 ## Voice licence
 
