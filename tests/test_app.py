@@ -135,7 +135,8 @@ def test_practice_hides_the_spelling_and_scores_the_first_try(tmp_path):
     body = wrong.json()
     assert body["phase"] == "retry"
     assert "quartz" not in wrong.text
-    assert body["hint"]["letters"][0]["ok"] is False
+    assert body["hint"]["letters"] == []
+    assert body["hint"]["note"] == "A letter is missing."
 
     fixed = client.post(f"/play/{token}/answer", json={"spelling": "Quartz"})
     assert fixed.json()["phase"] == "next"
@@ -149,6 +150,32 @@ def test_practice_hides_the_spelling_and_scores_the_first_try(tmp_path):
     assert "0 of 1 on the first try." in results.text
     assert "You fixed 1 after a second look." in results.text
     assert "xylophone" not in results.text
+
+
+def test_retry_hint_puts_the_hole_where_the_letter_was_skipped(tmp_path):
+    client, _clock, _voice = make_client(tmp_path)
+    login(client)
+    add_child(client)
+    add_list(client, "Words", "therapy | She went to therapy.", "1")
+    token = start(client)
+    wrong = client.post(f"/play/{token}/answer", json={"spelling": "therpy"})
+    body = wrong.json()
+    assert body["message"] == "Have another go."
+    assert body["prefill"] == "therpy"
+    assert [(item["ch"], item["kind"], item["ok"]) for item in body["hint"]["letters"]] == [
+        ("t", "ok", True),
+        ("h", "ok", True),
+        ("e", "ok", True),
+        ("r", "ok", True),
+        ("", "gap", False),
+        ("p", "ok", True),
+        ("y", "ok", True),
+    ]
+    assert body["hint"]["note"] == "A letter is missing here."
+    assert "therapy" not in wrong.text
+    page = client.get(f"/play/{token}")
+    assert "therapy" not in page.text.casefold()
+    assert '"kind": "gap"' in page.text
 
 
 def test_three_in_a_row_is_learned_until_a_miss(tmp_path):

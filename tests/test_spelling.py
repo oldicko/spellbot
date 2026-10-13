@@ -37,14 +37,140 @@ def test_homophones_do_not_blank_each_other():
     assert parts == [{"kind": "text", "text": "They're going to the park."}]
 
 
-def test_colour_hint_does_not_invent_letters_and_notes_a_missing_one():
-    letters, note = colour_attempt("thier", "their")
-    assert [letter.ok for letter in letters] == [True, True, False, False, True]
+def _tiles(letters):
+    return [(letter.ch, letter.kind) for letter in letters]
+
+
+def test_missing_letter_is_a_hole_and_the_tail_stays_correct():
+    letters, note = colour_attempt("Therpy", "therapy")
+    assert _tiles(letters) == [
+        ("t", "ok"),
+        ("h", "ok"),
+        ("e", "ok"),
+        ("r", "ok"),
+        ("", "gap"),
+        ("p", "ok"),
+        ("y", "ok"),
+    ]
+    assert note == "A letter is missing here."
+    assert all(letter.ch != "a" for letter in letters)
+
+
+def test_extra_letter_is_marked_and_the_tail_stays_correct():
+    letters, note = colour_attempt("therappy", "therapy")
+    assert _tiles(letters) == [
+        ("t", "ok"),
+        ("h", "ok"),
+        ("e", "ok"),
+        ("r", "ok"),
+        ("a", "ok"),
+        ("p", "ok"),
+        ("p", "extra"),
+        ("y", "ok"),
+    ]
+    assert note == "There is an extra letter."
+    letters, several = colour_attempt("therapyyy", "therapy")
+    assert [letter.kind for letter in letters][-3:] == ["ok", "extra", "extra"]
+    assert several == "There are extra letters."
+
+
+def test_one_different_letter_is_the_only_mark():
+    letters, note = colour_attempt("therapi", "therapy")
+    assert _tiles(letters) == [
+        ("t", "ok"),
+        ("h", "ok"),
+        ("e", "ok"),
+        ("r", "ok"),
+        ("a", "ok"),
+        ("p", "ok"),
+        ("i", "change"),
+    ]
     assert note is None
-    _letters, missing = colour_attempt("theyre", "they're")
-    assert missing == "A letter is missing."
-    _letters, extra = colour_attempt("theirr", "their")
-    assert extra == "There is an extra letter."
+
+
+def test_adjacent_letters_the_wrong_way_round_are_one_swap():
+    letters, note = colour_attempt("thier", "their")
+    assert _tiles(letters) == [
+        ("t", "ok"),
+        ("h", "ok"),
+        ("i", "swap"),
+        ("e", "swap"),
+        ("r", "ok"),
+    ]
+    assert note == "These two letters are the wrong way round."
+    swapped, swap_note = colour_attempt("threapy", "therapy")
+    assert _tiles(swapped) == [
+        ("t", "ok"),
+        ("h", "ok"),
+        ("r", "swap"),
+        ("e", "swap"),
+        ("a", "ok"),
+        ("p", "ok"),
+        ("y", "ok"),
+    ]
+    assert swap_note == "These two letters are the wrong way round."
+
+
+def test_missing_apostrophe_and_hyphen_are_named_and_not_shown():
+    letters, note = colour_attempt("theyre", "they're")
+    assert _tiles(letters) == [
+        ("t", "ok"),
+        ("h", "ok"),
+        ("e", "ok"),
+        ("y", "ok"),
+        ("", "gap"),
+        ("r", "ok"),
+        ("e", "ok"),
+    ]
+    assert note == "The apostrophe is missing."
+    assert all(letter.ch != "'" for letter in letters)
+    hyphen, hyphen_note = colour_attempt("icecream", "ice-cream")
+    assert ("", "gap") in _tiles(hyphen)
+    assert hyphen_note == "The hyphen is missing."
+    assert all(letter.ch != "-" for letter in hyphen)
+
+
+def test_doubled_letter_hole_follows_the_typed_letters():
+    letters, note = colour_attempt("bok", "book")
+    assert _tiles(letters) == [("b", "ok"), ("o", "ok"), ("", "gap"), ("k", "ok")]
+    assert note == "A letter is missing here."
+    assert all(letter.ch != "o" or letter.kind == "ok" for letter in letters)
+
+
+def test_two_holes_and_a_mix_stay_on_the_row():
+    letters, note = colour_attempt("thrpy", "therapy")
+    assert [letter.kind for letter in letters] == ["ok", "ok", "gap", "ok", "gap", "ok", "ok"]
+    assert note == "Some letters are missing."
+    mixed, mixed_note = colour_attempt("therpi", "therapy")
+    assert _tiles(mixed) == [
+        ("t", "ok"),
+        ("h", "ok"),
+        ("e", "ok"),
+        ("r", "ok"),
+        ("", "gap"),
+        ("p", "ok"),
+        ("i", "change"),
+    ]
+    assert mixed_note == "Have a look at the marked letters."
+    assert all(letter.ch != "a" and letter.ch != "y" for letter in mixed)
+
+
+def test_a_far_guess_has_no_tiles_and_does_not_spell_the_word():
+    letters, note = colour_attempt("xxxxx", "quartz")
+    assert letters == []
+    assert note == "A letter is missing."
+    shorter, short_note = colour_attempt("thpy", "therapy")
+    assert shorter == []
+    assert short_note == "Some letters are missing."
+    longer, long_note = colour_attempt("therapyyyy", "therapy")
+    assert longer == []
+    assert long_note == "There are extra letters."
+
+
+def test_exact_spelling_is_all_green():
+    letters, note = colour_attempt("therapy", "therapy")
+    assert note is None
+    assert [letter.kind for letter in letters] == ["ok"] * 7
 
 
 def test_learned_needs_three_first_tries_and_a_miss_clears_it():

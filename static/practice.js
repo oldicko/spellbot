@@ -56,24 +56,54 @@
 
   function renderHint(hint) {
     hintEl.replaceChildren();
-    if (!hint || !hint.letters || !hint.letters.length) {
+    if (!hint) {
       return;
     }
-    const row = document.createElement("p");
-    row.className = "letters";
-    hint.letters.forEach(function (letter) {
-      const span = document.createElement("span");
-      span.className = "letter " + (letter.ok ? "ok" : "no");
-      span.textContent = letter.ch === " " ? "·" : letter.ch;
-      row.appendChild(span);
-    });
-    hintEl.appendChild(row);
+    const letters = hint.letters || [];
+    if (letters.length) {
+      const row = document.createElement("p");
+      row.className = "letters";
+      let index = 0;
+      while (index < letters.length) {
+        const letter = letters[index];
+        if (letter.kind === "swap") {
+          const pair = document.createElement("span");
+          pair.className = "swap-pair";
+          appendTile(pair, letter);
+          if (letters[index + 1] && letters[index + 1].kind === "swap") {
+            appendTile(pair, letters[index + 1]);
+            index += 2;
+          } else {
+            index += 1;
+          }
+          row.appendChild(pair);
+          continue;
+        }
+        appendTile(row, letter);
+        index += 1;
+      }
+      hintEl.appendChild(row);
+    }
     if (hint.note) {
       const note = document.createElement("p");
       note.className = "length-note";
       note.textContent = hint.note;
       hintEl.appendChild(note);
     }
+  }
+
+  function appendTile(parent, letter) {
+    const span = document.createElement("span");
+    const kind = letter.kind || (letter.ok ? "ok" : "no");
+    span.className = "letter " + kind;
+    if (kind === "gap") {
+      span.setAttribute("role", "img");
+      span.setAttribute("aria-label", "missing letter");
+      parent.appendChild(span);
+      return;
+    }
+    span.textContent = letter.ch === " " ? "·" : letter.ch;
+    parent.appendChild(span);
   }
 
   function showAnswerWord(text, visible) {

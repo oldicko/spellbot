@@ -67,7 +67,9 @@ def public_answer(result: AnswerResult) -> dict:
 
 def _hint(letters, note: str | None) -> dict:
     return {
-        "letters": [{"ch": letter.ch, "ok": letter.ok} for letter in letters],
+        "letters": [
+            {"ch": letter.ch, "ok": letter.ok, "kind": letter.kind} for letter in letters
+        ],
         "note": note,
     }
 

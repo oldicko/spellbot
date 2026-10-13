@@ -40,8 +40,17 @@ class ChoiceWord:
 
 @dataclass(frozen=True)
 class Letter:
+    """One tile in a near-miss hint.
+
+    A gap has an empty ch. The answer character that belongs there is not stored.
+    """
+
     ch: str
-    ok: bool
+    kind: str
+
+    @property
+    def ok(self) -> bool:
+        return self.kind == "ok"
 
 
 @dataclass(frozen=True)
@@ -171,23 +180,131 @@ def contains_word(sentence: str, word_key: str) -> bool:
     return word_pattern(word_key).search(sentence) is not None
 
 
+# Tiles are drawn for one or two edits. A wilder guess would sketch the word.
+_CLOSE_EDITS = 2
+
+
 def colour_attempt(attempt: str, target_key: str) -> tuple[list[Letter], str | None]:
+    """Line the attempt up with the answer.
+
+    A missing letter becomes an empty tile in the hole, and letters after it
+    stay correct. The missing character itself is never returned.
+    """
     shown = normalise(attempt)
-    letters = [
-        Letter(ch, i < len(target_key) and ch == target_key[i]) for i, ch in enumerate(shown)
-    ]
-    gap = len(target_key) - len(shown)
+    letters, counts, missing = _align(shown, target_key)
+    if sum(counts.values()) > _CLOSE_EDITS:
+        return [], _length_note(len(target_key) - len(shown))
+    return letters, _close_note(counts, missing)
+
+
+def _length_note(gap: int) -> str | None:
     if gap == 1:
-        note = "A letter is missing."
-    elif gap > 1:
-        note = "Some letters are missing."
-    elif gap == -1:
-        note = "There is an extra letter."
-    elif gap < -1:
-        note = "There are extra letters."
-    else:
-        note = None
-    return letters, note
+        return "A letter is missing."
+    if gap > 1:
+        return "Some letters are missing."
+    if gap == -1:
+        return "There is an extra letter."
+    if gap < -1:
+        return "There are extra letters."
+    return None
+
+
+def _close_note(counts: dict[str, int], missing: list[str]) -> str | None:
+    used = [name for name in ("gap", "extra", "change", "swap") if counts[name]]
+    if used == ["gap"]:
+        if counts["gap"] == 1 and missing == ["'"]:
+            return "The apostrophe is missing."
+        if counts["gap"] == 1 and missing == ["-"]:
+            return "The hyphen is missing."
+        if counts["gap"] == 1:
+            return "A letter is missing here."
+        return "Some letters are missing."
+    if used == ["extra"]:
+        if counts["extra"] == 1:
+            return "There is an extra letter."
+        return "There are extra letters."
+    if used == ["swap"] and counts["swap"] == 1:
+        return "These two letters are the wrong way round."
+    if used == ["change"] and counts["change"] == 1:
+        return None
+    if not used:
+        return None
+    return "Have a look at the marked letters."
+
+
+def _align(shown: str, target: str) -> tuple[list[Letter], dict[str, int], list[str]]:
+    """Damerau-Levenshtein alignment.
+
+    One real edit outweighs the tie-break. The small extra cost prefers a
+    later hole, so a doubled letter such as bok / book lines up as b o _ k.
+    """
+    n, m = len(target), len(shown)
+    cap = n + m + 2
+    unit = cap * cap
+    dp = [[0] * (m + 1) for _ in range(n + 1)]
+    op: list[list[str | None]] = [[None] * (m + 1) for _ in range(n + 1)]
+
+    for i in range(1, n + 1):
+        dp[i][0] = dp[i - 1][0] + unit + (n - i + 1)
+        op[i][0] = "gap"
+    for j in range(1, m + 1):
+        dp[0][j] = dp[0][j - 1] + unit + (m - j + 1)
+        op[0][j] = "extra"
+
+    for i in range(1, n + 1):
+        for j in range(1, m + 1):
+            choices: list[tuple[int, int, str]] = []
+            if target[i - 1] == shown[j - 1]:
+                choices.append((dp[i - 1][j - 1], 0, "ok"))
+            else:
+                choices.append((dp[i - 1][j - 1] + unit + (n - i + 1), 2, "change"))
+            choices.append((dp[i - 1][j] + unit + (n - i + 1), 4, "gap"))
+            choices.append((dp[i][j - 1] + unit + (m - j + 1), 3, "extra"))
+            if (
+                i > 1
+                and j > 1
+                and target[i - 1] == shown[j - 2]
+                and target[i - 2] == shown[j - 1]
+                and target[i - 1] != target[i - 2]
+            ):
+                choices.append((dp[i - 2][j - 2] + unit + (n - i + 1), 1, "swap"))
+            _cost, _rank, kind = min(choices)
+            dp[i][j] = _cost
+            op[i][j] = kind
+
+    letters: list[Letter] = []
+    missing: list[str] = []
+    counts = {"gap": 0, "extra": 0, "change": 0, "swap": 0}
+    i, j = n, m
+    while i or j:
+        kind = op[i][j]
+        if kind == "ok":
+            letters.append(Letter(shown[j - 1], "ok"))
+            i, j = i - 1, j - 1
+        elif kind == "change":
+            letters.append(Letter(shown[j - 1], "change"))
+            counts["change"] += 1
+            i, j = i - 1, j - 1
+        elif kind == "gap":
+            letters.append(Letter("", "gap"))
+            missing.append(target[i - 1])
+            counts["gap"] += 1
+            i -= 1
+        elif kind == "extra":
+            letters.append(Letter(shown[j - 1], "extra"))
+            counts["extra"] += 1
+            j -= 1
+        elif kind == "swap":
+            letters.append(Letter(shown[j - 1], "swap"))
+            letters.append(Letter(shown[j - 2], "swap"))
+            counts["swap"] += 1
+            i -= 2
+            j -= 2
+        else:
+            raise RuntimeError("spelling alignment missed a cell")
+    letters.reverse()
+    missing.reverse()
+    return letters, counts, missing
 
 
 def choose_word(
