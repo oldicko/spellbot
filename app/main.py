@@ -41,6 +41,9 @@ def create_app(
     app = FastAPI(title="spellbot")
     app.state.store = Store(data_dir / "spellbot.sqlite")
     app.state.voice = voice
+    bind = getattr(voice, "bind_words", None)
+    if callable(bind):
+        bind(app.state.store.spellings)
     app.state.password = admin_password
     app.state.secret = load_secret(data_dir / "secret")
     app.state.now = now or (lambda: datetime.now(timezone.utc))

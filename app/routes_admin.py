@@ -18,6 +18,7 @@ from app.chart import score_chart
 from app.spelling import parse_word_list, percent
 from app.stats import STATUS_LABELS, TREND_LABELS, build_report
 from app.store import StoreError
+from app.tts import SAMPLE_LINE
 from app.ui import format_when, form_or_reject, message, render
 
 log = logging.getLogger("spellbot")
@@ -109,7 +110,6 @@ async def logout(request: Request):
 
 @router.get("")
 def children_page(request: Request):
-    voice = request.app.state.voice
     return render(
         request,
         "admin_children.html",
@@ -118,7 +118,7 @@ def children_page(request: Request):
             "error": None,
             "draft_name": "",
             "draft_minutes": 5,
-            "voice_ready": voice.available(),
+            **_voice_fields(request),
         },
     )
 
@@ -280,6 +280,9 @@ async def paste_words(request: Request, list_id: int):
         added, updated = store.add_words(list_id, parsed)
     except StoreError as exc:
         return _list_page(request, word_list, errors=[str(exc)], draft=draft)
+    note = getattr(request.app.state.voice, "note", None)
+    if callable(note):
+        note([item.word for item in parsed])
     return RedirectResponse(
         f"/admin/lists/{list_id}?notice=words&added={added}&updated={updated}",
         status_code=303,
@@ -336,8 +339,12 @@ async def delete_list(request: Request, list_id: int):
 
 @router.get("/voice")
 def voice_sample(request: Request):
+    voice = request.app.state.voice
+    speak = getattr(voice, "preview", None)
+    if not callable(speak):
+        speak = voice.wav_for
     try:
-        data = request.app.state.voice.wav_for("Your spelling voice is ready.")
+        data = speak(SAMPLE_LINE)
     except Exception:
         log.exception("Voice sample failed")
         return Response("The voice is not available.", status_code=503, media_type="text/plain")
@@ -354,8 +361,16 @@ def _logged_in(request: Request) -> bool:
     )
 
 
-def _children_again(request: Request, error: str, name: str, minutes: int):
+def _voice_fields(request: Request) -> dict:
     voice = request.app.state.voice
+    status = getattr(voice, "status_line", None)
+    return {
+        "voice_ready": voice.available(),
+        "voice_note": status() if callable(status) else None,
+    }
+
+
+def _children_again(request: Request, error: str, name: str, minutes: int):
     return render(
         request,
         "admin_children.html",
@@ -364,7 +379,7 @@ def _children_again(request: Request, error: str, name: str, minutes: int):
             "error": error,
             "draft_name": name,
             "draft_minutes": minutes,
-            "voice_ready": voice.available(),
+            **_voice_fields(request),
         },
         status_code=400,
     )

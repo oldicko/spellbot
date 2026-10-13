@@ -16,6 +16,9 @@
   {% else %}
     <p class="note">The voice file is not on this server yet. Spelling still works.</p>
   {% endif %}
+  {% if voice_note %}
+    <p class="note">{{ voice_note }}</p>
+  {% endif %}
 
   <section class="card">
     <h2>Add a child</h2>

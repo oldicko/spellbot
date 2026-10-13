@@ -23,7 +23,14 @@ NOISE_W_SCALE = 0.333
 
 
 class VoiceError(Exception):
-    pass
+    def __init__(self, message: str, *, retryable: bool = False) -> None:
+        super().__init__(message)
+        self.retryable = retryable
+
+
+# The grown-up preview and the recording queue must use the same sentence,
+# so the saved file is the one Play the voice serves.
+SAMPLE_LINE = "Your spelling voice is ready."
 
 
 class FakeVoice:

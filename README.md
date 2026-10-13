@@ -2,7 +2,7 @@
 
 A small spelling practice site for a home server. A child picks their name, hears a word, and types it. You keep the word lists, the sitting length, and the scores.
 
-The voice is offline British English. It uses Piper with the clearer Cori high model, spoken slowly so each sound in the word stays distinct. The container does not need the internet after it is built. Scores live in a SQLite file on a Docker volume.
+The voice is British English. Without a cloud key it stays offline, using Piper with the clearer Cori high model, spoken slowly so each sound in the word stays distinct. With a Gemini key, each spelling word is recorded once and kept next to the scores. The container does not need the internet after those recordings exist. Scores live in a SQLite file on a Docker volume.
 
 ## Run it on Proxmox
 
@@ -20,7 +20,9 @@ docker compose up -d --build
 
 Open `http://<the-server>:8080`. Grown-up pages are at `http://<the-server>:8080/admin`.
 
-The first build downloads the voice model, so it needs the network once. Later restarts do not. The first word after a start can take a few seconds while the voice wakes up. After that, repeats are quick.
+The first build downloads the offline voice model, so it needs the network once. Later restarts do not. The first word after a start can take a few seconds while the voice wakes up. After that, repeats are quick.
+
+To record a clearer voice, create a key at [Google AI Studio](https://aistudio.google.com/apikey) and set `GEMINI_API_KEY` in `.env`. Restart spellbot. It saves a slow British reading of every word on every list onto the data volume. Practice plays a saved recording as soon as that word is ready, and uses the offline voice until then. Open Play the voice on the Children page to hear it. `GEMINI_TTS_VOICE` chooses the speaker (the default is `Sulafat`). Changing the voice records the words again. The key stays in `.env` and is not sent to the tablets.
 
 Keep port 8080 on the home network. This app is not meant to be published on the internet. If you put HTTPS in front of it, set `SPELLBOT_SECURE_COOKIES=1` in `.env`.
 

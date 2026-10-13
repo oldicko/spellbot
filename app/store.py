@@ -348,6 +348,18 @@ class Store:
             ).fetchall()
         return [_word(row) for row in rows]
 
+    def spellings(self) -> list[str]:
+        """One display spelling per word, across every list."""
+        with self.session() as conn:
+            rows = conn.execute(
+                """
+                SELECT word FROM words
+                WHERE id IN (SELECT MIN(id) FROM words GROUP BY word_key)
+                ORDER BY id
+                """
+            ).fetchall()
+        return [row["word"] for row in rows]
+
     def add_words(self, list_id: int, rows: list[ParsedWord]) -> tuple[int, int]:
         added = 0
         updated = 0
